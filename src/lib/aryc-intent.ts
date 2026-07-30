@@ -55,7 +55,7 @@ export function interpret(
       kind: "calendar.move",
       summary: `Move "${target.title}" to ${fmtWhen(newStart)}`,
       detail: `Currently ${fmtWhen(target.start)} · ${target.durationMin} min`,
-      warning: clash ? `Conflict: "${clash.venueless ?? clash.title}" is at ${fmtTime(clash.start)}.` : undefined,
+      warning: clash ? `Conflict: "${clash.title}" is at ${fmtTime(clash.start)}.` : undefined,
       payload: { eventId: target.id, newStart },
     };
   }
