@@ -93,6 +93,8 @@ export function ArycProvider({ children }: { children: ReactNode }) {
 
   // ---- load ---------------------------------------------------------------
   const load = useCallback(async (uid: string) => {
+    // Wait for the access token to be attached before reading (avoids a 401 race on first paint).
+    await supabase.auth.getSession();
     const [{ data: ev }, { data: tk }, { data: bk }, { data: ac }, { data: pf }] =
       await Promise.all([
         supabase.from("events").select("*").order("start_at"),
