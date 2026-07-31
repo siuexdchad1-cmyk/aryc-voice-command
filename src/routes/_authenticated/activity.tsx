@@ -3,7 +3,7 @@ import { Flag } from "lucide-react";
 import { Shell } from "@/components/aryc/Shell";
 import { useAryc, type ActionStatus } from "@/lib/aryc-store";
 
-export const Route = createFileRoute("/activity")({
+export const Route = createFileRoute("/_authenticated/activity")({
   head: () => ({
     meta: [
       { title: "Activity log — Aryc" },
