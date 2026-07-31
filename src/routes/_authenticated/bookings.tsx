@@ -5,7 +5,7 @@ import { Shell } from "@/components/aryc/Shell";
 import { fmtTime, fmtWhen } from "@/lib/aryc-intent";
 import { useAryc } from "@/lib/aryc-store";
 
-export const Route = createFileRoute("/bookings")({
+export const Route = createFileRoute("/_authenticated/bookings")({
   head: () => ({
     meta: [
       { title: "Bookings — Aryc" },

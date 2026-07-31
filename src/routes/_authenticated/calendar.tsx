@@ -5,7 +5,7 @@ import { Shell } from "@/components/aryc/Shell";
 import { fmtWhen } from "@/lib/aryc-intent";
 import { useAryc } from "@/lib/aryc-store";
 
-export const Route = createFileRoute("/calendar")({
+export const Route = createFileRoute("/_authenticated/calendar")({
   head: () => ({
     meta: [
       { title: "Calendar — Aryc" },

@@ -6,7 +6,7 @@ import { MicOrb } from "@/components/aryc/MicOrb";
 import { interpret } from "@/lib/aryc-intent";
 import { useAryc } from "@/lib/aryc-store";
 
-export const Route = createFileRoute("/voice")({
+export const Route = createFileRoute("/_authenticated/voice")({
   head: () => ({
     meta: [
       { title: "Listening — Aryc" },
