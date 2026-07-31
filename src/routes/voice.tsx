@@ -48,15 +48,16 @@ function VoicePage() {
         setTimeout(() => setTranscript(words.slice(0, i + 1).join(" ")), 180 * (i + 1)),
       );
     });
+    timers.current.push(setTimeout(() => setState("processing"), 180 * words.length + 300));
     timers.current.push(
-      setTimeout(() => setState("processing"), 180 * words.length + 300),
-    );
-    timers.current.push(
-      setTimeout(() => {
-        const result = interpret(next, events);
-        if (!("reply" in result)) propose(result, next);
-        setState("idle");
-      }, 180 * words.length + 1200),
+      setTimeout(
+        () => {
+          const result = interpret(next, events);
+          if (!("reply" in result)) propose(result, next);
+          setState("idle");
+        },
+        180 * words.length + 1200,
+      ),
     );
   };
 
@@ -92,9 +93,7 @@ function VoicePage() {
       <div className="relative flex flex-1 items-center">
         <p className="text-3xl font-bold leading-tight">
           {transcript || (
-            <span className="text-muted-foreground">
-              Tap the orb and Aryc will listen…
-            </span>
+            <span className="text-muted-foreground">Tap the orb and Aryc will listen…</span>
           )}
           {state === "listening" && transcript && (
             <span className="ml-1 inline-block h-7 w-0.5 animate-glow-pulse align-middle aryc-gradient" />

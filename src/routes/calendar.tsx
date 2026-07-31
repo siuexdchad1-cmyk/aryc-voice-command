@@ -9,7 +9,10 @@ export const Route = createFileRoute("/calendar")({
   head: () => ({
     meta: [
       { title: "Calendar — Aryc" },
-      { name: "description", content: "See, move, and cancel meetings by voice with conflict checks." },
+      {
+        name: "description",
+        content: "See, move, and cancel meetings by voice with conflict checks.",
+      },
       { property: "og:title", content: "Calendar — Aryc" },
       { property: "og:description", content: "Voice-managed calendar with conflict detection." },
     ],

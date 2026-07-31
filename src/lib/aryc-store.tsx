@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
 export type ActionKind =
   | "calendar.move"
@@ -111,7 +104,13 @@ export function ArycProvider({ children }: { children: ReactNode }) {
 
   const logHeard = useCallback((text: string) => {
     setActivity((prev) => [
-      { id: uid(), at: new Date().toISOString(), heard: text, summary: "Command heard", status: "done" },
+      {
+        id: uid(),
+        at: new Date().toISOString(),
+        heard: text,
+        summary: "Command heard",
+        status: "done",
+      },
       ...prev,
     ]);
   }, []);
@@ -156,7 +155,12 @@ export function ArycProvider({ children }: { children: ReactNode }) {
         return "Cancelled.";
       case "task.create":
         setTasks((prev) => [
-          { id: uid(), title: String(p.title), due: p.due ? String(p.due) : undefined, done: false },
+          {
+            id: uid(),
+            title: String(p.title),
+            due: p.due ? String(p.due) : undefined,
+            done: false,
+          },
           ...prev,
         ]);
         return "Task saved.";

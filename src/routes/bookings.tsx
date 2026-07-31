@@ -11,7 +11,10 @@ export const Route = createFileRoute("/bookings")({
       { title: "Bookings — Aryc" },
       { name: "description", content: "Aryc proposes options and books only after you confirm." },
       { property: "og:title", content: "Bookings — Aryc" },
-      { property: "og:description", content: "Restaurant and appointment bookings, confirmed by you." },
+      {
+        property: "og:description",
+        content: "Restaurant and appointment bookings, confirmed by you.",
+      },
     ],
   }),
   component: BookingsPage,

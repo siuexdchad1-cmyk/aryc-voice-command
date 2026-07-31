@@ -9,7 +9,10 @@ export const Route = createFileRoute("/tasks")({
   head: () => ({
     meta: [
       { title: "Tasks — Aryc" },
-      { name: "description", content: "Voice-captured tasks and reminders with natural due dates." },
+      {
+        name: "description",
+        content: "Voice-captured tasks and reminders with natural due dates.",
+      },
       { property: "og:title", content: "Tasks — Aryc" },
       { property: "og:description", content: "Capture tasks by voice, due dates included." },
     ],
@@ -39,7 +42,9 @@ function TasksPage() {
               {t.done && <Check className="size-4 text-white" />}
             </button>
             <div className="min-w-0 flex-1">
-              <p className={`truncate text-sm font-medium ${t.done ? "text-muted-foreground line-through" : ""}`}>
+              <p
+                className={`truncate text-sm font-medium ${t.done ? "text-muted-foreground line-through" : ""}`}
+              >
                 {t.title}
               </p>
               {t.due && <p className="text-xs text-muted-foreground">{fmtWhen(t.due)}</p>}

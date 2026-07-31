@@ -18,9 +18,24 @@ export const Route = createFileRoute("/home")({
 });
 
 const quickActions = [
-  { label: "Move a meeting", hint: "Calendar", icon: CalendarClock, command: "Move my 3pm to Thursday at 3" },
-  { label: "Book a table", hint: "Bookings", icon: UtensilsCrossed, command: "Book a table Friday at 8 for 2" },
-  { label: "Capture a task", hint: "Tasks", icon: CheckCircle2, command: "Remind me to call the accountant tomorrow at 9" },
+  {
+    label: "Move a meeting",
+    hint: "Calendar",
+    icon: CalendarClock,
+    command: "Move my 3pm to Thursday at 3",
+  },
+  {
+    label: "Book a table",
+    hint: "Bookings",
+    icon: UtensilsCrossed,
+    command: "Book a table Friday at 8 for 2",
+  },
+  {
+    label: "Capture a task",
+    hint: "Tasks",
+    icon: CheckCircle2,
+    command: "Remind me to call the accountant tomorrow at 9",
+  },
   { label: "Cancel standup", hint: "Calendar", icon: XCircle, command: "Cancel standup" },
 ];
 
@@ -45,8 +60,7 @@ function HomePage() {
       </header>
 
       <h1 className="mt-8 text-4xl font-extrabold tracking-tight">
-        Hi {userName},
-        <span className="block text-muted-foreground">what should I handle?</span>
+        Hi {userName},<span className="block text-muted-foreground">what should I handle?</span>
       </h1>
 
       <div className="relative mt-8 h-40 overflow-hidden rounded-3xl border border-border bg-card">
@@ -62,7 +76,15 @@ function HomePage() {
             <ellipse cx="200" cy="100" rx="150" ry="46" fill="url(#swirl)" />
             <ellipse cx="200" cy="100" rx="46" ry="120" fill="url(#swirl)" opacity="0.7" />
           </g>
-          <ellipse cx="200" cy="100" rx="52" ry="20" fill="#000" opacity="0.75" style={{ filter: "blur(10px)" }} />
+          <ellipse
+            cx="200"
+            cy="100"
+            rx="52"
+            ry="20"
+            fill="#000"
+            opacity="0.75"
+            style={{ filter: "blur(10px)" }}
+          />
         </svg>
         {next && (
           <div className="absolute inset-x-0 bottom-0 flex items-center justify-between p-4 text-sm">

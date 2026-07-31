@@ -32,9 +32,7 @@ export function interpret(
   events: CalendarEvent[],
 ): Omit<ProposedAction, "id"> | { reply: string } {
   const t = text.toLowerCase();
-  const weekday = t.match(
-    /(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/,
-  )?.[1];
+  const weekday = t.match(/(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/)?.[1];
 
   if (/(move|reschedule|push)/.test(t)) {
     const target =
@@ -43,11 +41,13 @@ export function interpret(
       events[0];
     if (!target) return { reply: "I couldn't find that event on your calendar." };
     const hour = parseHour(t.replace(/\d{1,2}\s*(am|pm)?\s*(to|→)/, ""), 15);
-    const newStart = weekday ? nextWeekday(weekday, hour) : (() => {
-      const d = new Date(target.start);
-      d.setHours(hour, 0, 0, 0);
-      return d.toISOString();
-    })();
+    const newStart = weekday
+      ? nextWeekday(weekday, hour)
+      : (() => {
+          const d = new Date(target.start);
+          d.setHours(hour, 0, 0, 0);
+          return d.toISOString();
+        })();
     const clash = events.find(
       (e) => e.id !== target.id && Math.abs(+new Date(e.start) - +new Date(newStart)) < 30 * 60000,
     );
@@ -103,9 +103,7 @@ export function interpret(
     const hour = parseHour(t, 10);
     const start = weekday ? nextWeekday(weekday, hour) : nextWeekday("monday", hour);
     const title = /lunch/.test(t) ? "Lunch" : /call/.test(t) ? "Call" : "Meeting";
-    const clash = events.find(
-      (e) => Math.abs(+new Date(e.start) - +new Date(start)) < 30 * 60000,
-    );
+    const clash = events.find((e) => Math.abs(+new Date(e.start) - +new Date(start)) < 30 * 60000);
     return {
       kind: "calendar.create",
       summary: `Schedule "${title}" on ${fmtWhen(start)}`,

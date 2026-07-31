@@ -30,9 +30,7 @@ function ActivityPage() {
   return (
     <Shell>
       <h1 className="text-3xl font-extrabold tracking-tight">Activity</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Everything Aryc heard, proposed and did.
-      </p>
+      <p className="mt-1 text-sm text-muted-foreground">Everything Aryc heard, proposed and did.</p>
 
       {activity.length === 0 && (
         <p className="mt-10 text-sm text-muted-foreground">
@@ -53,9 +51,7 @@ function ActivityPage() {
                 {statusLabel[a.status]}
               </span>
             </div>
-            {a.heard && (
-              <p className="mt-1 text-xs text-muted-foreground">Heard: “{a.heard}”</p>
-            )}
+            {a.heard && <p className="mt-1 text-xs text-muted-foreground">Heard: “{a.heard}”</p>}
             {a.outcome && <p className="mt-1 text-xs text-muted-foreground">{a.outcome}</p>}
             <div className="mt-3 flex items-center justify-between">
               <span className="text-[10px] text-muted-foreground">

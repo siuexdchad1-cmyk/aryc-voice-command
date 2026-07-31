@@ -16,9 +16,7 @@ export function ConfirmationGate() {
           Confirm before Aryc acts
         </p>
         <h2 className="mt-2 text-2xl font-bold leading-tight">{pending.summary}</h2>
-        {pending.detail && (
-          <p className="mt-2 text-sm text-muted-foreground">{pending.detail}</p>
-        )}
+        {pending.detail && <p className="mt-2 text-sm text-muted-foreground">{pending.detail}</p>}
         {pending.warning && (
           <div className="mt-3 flex items-start gap-2 rounded-2xl border border-border bg-background p-3 text-sm">
             <AlertTriangle className="mt-0.5 size-4 shrink-0 text-aryc-orange" />
