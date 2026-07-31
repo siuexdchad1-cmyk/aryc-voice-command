@@ -1,4 +1,13 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export type ActionKind =
   | "calendar.move"
@@ -52,31 +61,9 @@ export interface ActivityEntry {
   flagged?: boolean;
 }
 
-const iso = (dayOffset: number, hour: number, min = 0) => {
-  const d = new Date();
-  d.setDate(d.getDate() + dayOffset);
-  d.setHours(hour, min, 0, 0);
-  return d.toISOString();
-};
-
-const seedEvents: CalendarEvent[] = [
-  { id: "e1", title: "Standup", start: iso(0, 9, 30), durationMin: 15 },
-  { id: "e2", title: "Design review", start: iso(0, 15), durationMin: 60, location: "Zoom" },
-  { id: "e3", title: "1:1 with Priya", start: iso(1, 11), durationMin: 30 },
-  { id: "e4", title: "Board prep", start: iso(2, 15), durationMin: 45 },
-];
-
-const seedTasks: Task[] = [
-  { id: "t1", title: "Send Q3 numbers to Marco", due: iso(0, 18), done: false },
-  { id: "t2", title: "Review vendor contract", due: iso(1, 12), done: false },
-];
-
-const seedBookings: Booking[] = [
-  { id: "b1", venue: "Osteria Nord", when: iso(3, 20), party: 2, status: "confirmed" },
-];
-
 interface ArycState {
   userName: string;
+  loading: boolean;
   events: CalendarEvent[];
   tasks: Task[];
   bookings: Booking[];
@@ -89,141 +76,286 @@ interface ArycState {
   flagEntry: (id: string) => void;
   toggleTask: (id: string) => void;
   logHeard: (text: string) => void;
+  signOut: () => Promise<void>;
 }
 
 const Ctx = createContext<ArycState | null>(null);
 
-const uid = () => Math.random().toString(36).slice(2, 10);
-
 export function ArycProvider({ children }: { children: ReactNode }) {
-  const [events, setEvents] = useState(seedEvents);
-  const [tasks, setTasks] = useState(seedTasks);
-  const [bookings, setBookings] = useState(seedBookings);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userName, setUserName] = useState("there");
+  const [loading, setLoading] = useState(true);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [pending, setPending] = useState<(ProposedAction & { entryId: string }) | null>(null);
 
-  const logHeard = useCallback((text: string) => {
-    setActivity((prev) => [
-      {
-        id: uid(),
-        at: new Date().toISOString(),
-        heard: text,
-        summary: "Command heard",
-        status: "done",
-      },
-      ...prev,
-    ]);
+  // ---- load ---------------------------------------------------------------
+  const load = useCallback(async (uid: string) => {
+    const [{ data: ev }, { data: tk }, { data: bk }, { data: ac }, { data: pf }] =
+      await Promise.all([
+        supabase.from("events").select("*").order("start_at"),
+        supabase.from("tasks").select("*").order("created_at", { ascending: false }),
+        supabase.from("bookings").select("*").order("when_at"),
+        supabase.from("activity").select("*").order("created_at", { ascending: false }).limit(100),
+        supabase.from("profiles").select("display_name").eq("id", uid).maybeSingle(),
+      ]);
+    setEvents(
+      (ev ?? []).map((e) => ({
+        id: e.id,
+        title: e.title,
+        start: e.start_at,
+        durationMin: e.duration_min,
+        location: e.location ?? undefined,
+      })),
+    );
+    setTasks(
+      (tk ?? []).map((t) => ({
+        id: t.id,
+        title: t.title,
+        due: t.due_at ?? undefined,
+        done: t.done,
+      })),
+    );
+    setBookings(
+      (bk ?? []).map((b) => ({
+        id: b.id,
+        venue: b.venue,
+        when: b.when_at,
+        party: b.party,
+        status: b.status === "proposed" ? "proposed" : "confirmed",
+      })),
+    );
+    setActivity(
+      (ac ?? []).map((a) => ({
+        id: a.id,
+        at: a.created_at,
+        heard: a.heard ?? undefined,
+        summary: a.summary,
+        status: a.status as ActionStatus,
+        outcome: a.outcome ?? undefined,
+        flagged: a.flagged,
+      })),
+    );
+    if (pf?.display_name) setUserName(pf.display_name);
+    setLoading(false);
   }, []);
 
-  const propose = useCallback((a: Omit<ProposedAction, "id">, heard?: string) => {
-    const entryId = uid();
-    setActivity((prev) => [
-      {
-        id: entryId,
-        at: new Date().toISOString(),
-        heard,
-        summary: a.summary,
-        status: "awaiting",
-      },
-      ...prev,
-    ]);
-    setPending({ ...a, id: uid(), entryId });
-  }, []);
+  useEffect(() => {
+    let active = true;
+    const apply = (user: { id: string; email?: string; user_metadata?: unknown } | null) => {
+      if (!active) return;
+      if (!user) {
+        setUserId(null);
+        setEvents([]);
+        setTasks([]);
+        setBookings([]);
+        setActivity([]);
+        setLoading(false);
+        return;
+      }
+      setUserId(user.id);
+      const meta = (user.user_metadata ?? {}) as { display_name?: string; full_name?: string };
+      setUserName(meta.display_name ?? meta.full_name ?? user.email?.split("@")[0] ?? "there");
+      void load(user.id);
+    };
+
+    void supabase.auth.getUser().then(({ data }) => apply(data.user ?? null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      apply(session?.user ?? null);
+    });
+
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [load]);
+
+  // ---- activity log -------------------------------------------------------
+  const insertActivity = useCallback(
+    async (entry: { heard?: string; summary: string; status: ActionStatus; outcome?: string }) => {
+      if (!userId) return null;
+      const { data } = await supabase
+        .from("activity")
+        .insert({ ...entry, user_id: userId })
+        .select()
+        .single();
+      if (!data) return null;
+      setActivity((prev) => [
+        {
+          id: data.id,
+          at: data.created_at,
+          heard: data.heard ?? undefined,
+          summary: data.summary,
+          status: data.status as ActionStatus,
+          outcome: data.outcome ?? undefined,
+          flagged: data.flagged,
+        },
+        ...prev,
+      ]);
+      return data.id as string;
+    },
+    [userId],
+  );
+
+  const logHeard = useCallback(
+    (text: string) => {
+      void insertActivity({ heard: text, summary: "Command heard", status: "done" });
+    },
+    [insertActivity],
+  );
+
+  const propose = useCallback(
+    (a: Omit<ProposedAction, "id">, heard?: string) => {
+      void (async () => {
+        const entryId = (await insertActivity({ heard, summary: a.summary, status: "awaiting" })) ?? "";
+        setPending({ ...a, id: entryId || Math.random().toString(36).slice(2), entryId });
+      })();
+    },
+    [insertActivity],
+  );
 
   // Execution is private to this module and only reachable from confirmPending.
-  const execute = useCallback((action: ProposedAction): string => {
-    const p = action.payload as Record<string, string | number>;
-    switch (action.kind) {
-      case "calendar.move":
-        setEvents((prev) =>
-          prev.map((e) => (e.id === p.eventId ? { ...e, start: String(p.newStart) } : e)),
-        );
-        return "Moved.";
-      case "calendar.create":
-        setEvents((prev) => [
-          ...prev,
-          {
-            id: uid(),
-            title: String(p.title),
-            start: String(p.start),
-            durationMin: Number(p.durationMin ?? 30),
-          },
-        ]);
-        return "Added to your calendar.";
-      case "calendar.cancel":
-        setEvents((prev) => prev.filter((e) => e.id !== p.eventId));
-        return "Cancelled.";
-      case "task.create":
-        setTasks((prev) => [
-          {
-            id: uid(),
-            title: String(p.title),
-            due: p.due ? String(p.due) : undefined,
-            done: false,
-          },
-          ...prev,
-        ]);
-        return "Task saved.";
-      case "booking.create":
-        setBookings((prev) => [
-          {
-            id: uid(),
-            venue: String(p.venue),
-            when: String(p.when),
-            party: Number(p.party ?? 2),
-            status: "confirmed",
-          },
-          ...prev,
-        ]);
-        return "Booking confirmed.";
-      default:
-        return "Done.";
-    }
-  }, []);
+  const execute = useCallback(
+    async (action: ProposedAction): Promise<string> => {
+      if (!userId) throw new Error("Not signed in");
+      const p = action.payload as Record<string, string | number>;
+      switch (action.kind) {
+        case "calendar.move": {
+          const { error } = await supabase
+            .from("events")
+            .update({ start_at: String(p.newStart) })
+            .eq("id", String(p.eventId));
+          if (error) throw error;
+          setEvents((prev) =>
+            prev.map((e) => (e.id === p.eventId ? { ...e, start: String(p.newStart) } : e)),
+          );
+          return "Moved.";
+        }
+        case "calendar.create": {
+          const { data, error } = await supabase
+            .from("events")
+            .insert({
+              user_id: userId,
+              title: String(p.title),
+              start_at: String(p.start),
+              duration_min: Number(p.durationMin ?? 30),
+            })
+            .select()
+            .single();
+          if (error || !data) throw error ?? new Error("Insert failed");
+          setEvents((prev) => [
+            ...prev,
+            {
+              id: data.id,
+              title: data.title,
+              start: data.start_at,
+              durationMin: data.duration_min,
+            },
+          ]);
+          return "Added to your calendar.";
+        }
+        case "calendar.cancel": {
+          const { error } = await supabase.from("events").delete().eq("id", String(p.eventId));
+          if (error) throw error;
+          setEvents((prev) => prev.filter((e) => e.id !== p.eventId));
+          return "Cancelled.";
+        }
+        case "task.create": {
+          const { data, error } = await supabase
+            .from("tasks")
+            .insert({
+              user_id: userId,
+              title: String(p.title),
+              due_at: p.due ? String(p.due) : null,
+            })
+            .select()
+            .single();
+          if (error || !data) throw error ?? new Error("Insert failed");
+          setTasks((prev) => [
+            { id: data.id, title: data.title, due: data.due_at ?? undefined, done: data.done },
+            ...prev,
+          ]);
+          return "Task saved.";
+        }
+        case "booking.create": {
+          const { data, error } = await supabase
+            .from("bookings")
+            .insert({
+              user_id: userId,
+              venue: String(p.venue),
+              when_at: String(p.when),
+              party: Number(p.party ?? 2),
+              status: "confirmed",
+            })
+            .select()
+            .single();
+          if (error || !data) throw error ?? new Error("Insert failed");
+          setBookings((prev) => [
+            { id: data.id, venue: data.venue, when: data.when_at, party: data.party, status: "confirmed" },
+            ...prev,
+          ]);
+          return "Booking confirmed.";
+        }
+        default:
+          return "Done.";
+      }
+    },
+    [userId],
+  );
+
+  const settle = useCallback(
+    async (entryId: string, status: ActionStatus, outcome: string) => {
+      setActivity((prev) => prev.map((e) => (e.id === entryId ? { ...e, status, outcome } : e)));
+      if (entryId) await supabase.from("activity").update({ status, outcome }).eq("id", entryId);
+    },
+    [],
+  );
 
   const confirmPending = useCallback(() => {
-    setPending((current) => {
-      if (!current) return null;
-      let outcome: string;
-      let status: ActionStatus = "done";
+    const current = pending;
+    if (!current) return;
+    setPending(null);
+    void (async () => {
       try {
-        outcome = execute(current);
+        const outcome = await execute(current);
+        await settle(current.entryId, "done", outcome);
       } catch {
-        outcome = "Something went wrong — nothing was changed.";
-        status = "failed";
+        await settle(current.entryId, "failed", "Something went wrong — nothing was changed.");
       }
-      setActivity((prev) =>
-        prev.map((e) => (e.id === current.entryId ? { ...e, status, outcome } : e)),
-      );
-      return null;
-    });
-  }, [execute]);
+    })();
+  }, [pending, execute, settle]);
 
   const declinePending = useCallback(() => {
-    setPending((current) => {
-      if (!current) return null;
-      setActivity((prev) =>
-        prev.map((e) =>
-          e.id === current.entryId
-            ? { ...e, status: "declined", outcome: "You declined — nothing was changed." }
-            : e,
-        ),
-      );
-      return null;
-    });
-  }, []);
+    const current = pending;
+    if (!current) return;
+    setPending(null);
+    void settle(current.entryId, "declined", "You declined — nothing was changed.");
+  }, [pending, settle]);
 
   const flagEntry = useCallback((id: string) => {
     setActivity((prev) => prev.map((e) => (e.id === id ? { ...e, flagged: true } : e)));
+    void supabase.from("activity").update({ flagged: true }).eq("id", id);
   }, []);
 
-  const toggleTask = useCallback((id: string) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+  const toggleTask = useCallback(
+    (id: string) => {
+      const next = !tasks.find((t) => t.id === id)?.done;
+      setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done: next } : t)));
+      void supabase.from("tasks").update({ done: next }).eq("id", id);
+    },
+    [tasks],
+  );
+
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut();
   }, []);
 
   const value = useMemo<ArycState>(
     () => ({
-      userName: "Alex",
+      userName,
+      loading,
       events: [...events].sort((a, b) => a.start.localeCompare(b.start)),
       tasks,
       bookings,
@@ -235,8 +367,11 @@ export function ArycProvider({ children }: { children: ReactNode }) {
       flagEntry,
       toggleTask,
       logHeard,
+      signOut,
     }),
     [
+      userName,
+      loading,
       events,
       tasks,
       bookings,
@@ -248,6 +383,7 @@ export function ArycProvider({ children }: { children: ReactNode }) {
       flagEntry,
       toggleTask,
       logHeard,
+      signOut,
     ],
   );
 

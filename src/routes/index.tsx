@@ -48,13 +48,13 @@ function Onboarding() {
           <span className="h-1.5 w-1.5 rounded-full bg-border" />
         </div>
         <Link
-          to="/home"
+          to="/auth"
           className="aryc-gradient-border flex h-14 w-full items-center justify-center rounded-full bg-card text-base font-semibold"
         >
           Sign Up
         </Link>
         <Link
-          to="/home"
+          to="/auth"
           className="flex h-14 w-full items-center justify-center rounded-full border border-border text-base font-medium text-muted-foreground"
         >
           Sign in
